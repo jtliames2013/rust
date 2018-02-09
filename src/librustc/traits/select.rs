@@ -2116,9 +2116,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyProjection(_) | ty::TyParam(_) | ty::TyAnon(..) => None,
             ty::TyInfer(ty::TyVar(_)) => Ambiguous,
 
-            ty::TyInfer(ty::FreshTy(_))
-            | ty::TyInfer(ty::FreshIntTy(_))
-            | ty::TyInfer(ty::FreshFloatTy(_)) => {
+            ty::TyInfer(ty::CanonicalTy(_)) |
+            ty::TyInfer(ty::FreshTy(_)) |
+            ty::TyInfer(ty::FreshIntTy(_)) |
+            ty::TyInfer(ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}",
                      self_ty);
             }
@@ -2187,9 +2188,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Ambiguous
             }
 
-            ty::TyInfer(ty::FreshTy(_))
-            | ty::TyInfer(ty::FreshIntTy(_))
-            | ty::TyInfer(ty::FreshFloatTy(_)) => {
+            ty::TyInfer(ty::CanonicalTy(_)) |
+            ty::TyInfer(ty::FreshTy(_)) |
+            ty::TyInfer(ty::FreshIntTy(_)) |
+            ty::TyInfer(ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}",
                      self_ty);
             }
@@ -2228,6 +2230,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyParam(..) |
             ty::TyForeign(..) |
             ty::TyProjection(..) |
+            ty::TyInfer(ty::CanonicalTy(_)) |
             ty::TyInfer(ty::TyVar(_)) |
             ty::TyInfer(ty::FreshTy(_)) |
             ty::TyInfer(ty::FreshIntTy(_)) |
