@@ -168,6 +168,8 @@ pub struct PerfStats {
     /// result had already been canonicalized.
     pub canonicalized_values_allocated: Cell<usize>,
     /// Number of times this query is invoked.
+    pub normalize_ty_after_erasing_regions: Cell<usize>,
+    /// Number of times this query is invoked.
     pub normalize_projection_ty: Cell<usize>,
 }
 
@@ -788,6 +790,8 @@ impl Session {
                  self.perf_stats.queries_canonicalized.get());
         println!("Total canonical values interned:               {}",
                  self.perf_stats.canonicalized_values_allocated.get());
+        println!("normalize_ty_after_erasing_regions:            {}",
+                 self.perf_stats.normalize_ty_after_erasing_regions.get());
         println!("normalize_projection_ty:                       {}",
                  self.perf_stats.normalize_projection_ty.get());
     }
@@ -1061,6 +1065,7 @@ pub fn build_session_(sopts: config::Options,
             decode_def_path_tables_time: Cell::new(Duration::from_secs(0)),
             queries_canonicalized: Cell::new(0),
             canonicalized_values_allocated: Cell::new(0),
+            normalize_ty_after_erasing_regions: Cell::new(0),
             normalize_projection_ty: Cell::new(0),
         },
         code_stats: RefCell::new(CodeStats::new()),
