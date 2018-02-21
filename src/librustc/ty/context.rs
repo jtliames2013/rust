@@ -105,7 +105,6 @@ pub struct GlobalArenas<'tcx> {
     tables: TypedArena<ty::TypeckTables<'tcx>>,
     /// miri allocations
     const_allocs: TypedArena<interpret::Allocation>,
-
 }
 
 impl<'tcx> GlobalArenas<'tcx> {
@@ -2439,5 +2438,3 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         tcx.fully_normalize_associated_types_in(&ty)
     };
 }
-
-
