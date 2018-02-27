@@ -1,0 +1,13 @@
+error[E0597]: `local` does not live long enough
+  --> $DIR/issue-47470.rs:27:9
+   |
+LL |         &local //~ ERROR `local` does not live long enough
+   |         ^^^^^^ borrowed value does not live long enough
+LL |     }
+   |     - borrowed value only lives until here
+   |
+   = note: borrowed value must be valid for lifetime '_#4r...
+
+error: aborting due to previous error
+
+If you want more information on this error, try using "rustc --explain E0597"
