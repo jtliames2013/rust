@@ -426,5 +426,3 @@ BraceStructTypeFoldableImpl! {
         obligations
     } where T: TypeFoldable<'tcx>
 }
-
-
