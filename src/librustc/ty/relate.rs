@@ -15,10 +15,8 @@
 
 use hir::def_id::DefId;
 use middle::const_val::ConstVal;
-use traits::Reveal;
-use ty::subst::{UnpackedKind, Substs};
+use ty::subst::{Kind, UnpackedKind, Substs};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::fold::{TypeVisitor, TypeFolder};
 use ty::error::{ExpectedFound, TypeError};
 use util::common::ErrorReported;
 use std::rc::Rc;
@@ -142,15 +140,7 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
 
     let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances.map_or(ty::Invariant, |v| v[i]);
-        match (a.unpack(), b.unpack()) {
-            (UnpackedKind::Lifetime(a_lt), UnpackedKind::Lifetime(b_lt)) => {
-                Ok(relation.relate_with_variance(variance, &a_lt, &b_lt)?.into())
-            }
-            (UnpackedKind::Type(a_ty), UnpackedKind::Type(b_ty)) => {
-                Ok(relation.relate_with_variance(variance, &a_ty, &b_ty)?.into())
-            }
-            (UnpackedKind::Lifetime(_), _) | (UnpackedKind::Type(_), _) => bug!()
-        }
+        relation.relate_with_variance(variance, a, b)
     });
 
     Ok(tcx.mk_substs(params)?)
@@ -325,13 +315,9 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
 #[derive(Debug, Clone)]
 struct GeneratorWitness<'tcx>(&'tcx ty::Slice<Ty<'tcx>>);
 
-impl<'tcx> TypeFoldable<'tcx> for GeneratorWitness<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        GeneratorWitness(self.0.fold_with(folder))
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.0.visit_with(visitor)
+TupleStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for GeneratorWitness<'tcx> {
+        a
     }
 }
 
@@ -485,7 +471,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                     ConstVal::Integral(x) => Ok(x.to_u64().unwrap()),
                     ConstVal::Unevaluated(def_id, substs) => {
                         // FIXME(eddyb) get the right param_env.
-                        let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                        let param_env = ty::ParamEnv::empty();
                         match tcx.lift_to_global(&substs) {
                             Some(substs) => {
                                 match tcx.const_eval(param_env.and((def_id, substs))) {
@@ -678,6 +664,27 @@ impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for Box<T> {
         let a: &T = a;
         let b: &T = b;
         Ok(Box::new(relation.relate(a, b)?))
+    }
+}
+
+impl<'tcx> Relate<'tcx> for Kind<'tcx> {
+    fn relate<'a, 'gcx, R>(
+        relation: &mut R,
+        a: &Kind<'tcx>,
+        b: &Kind<'tcx>
+    ) -> RelateResult<'tcx, Kind<'tcx>>
+    where
+        R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a,
+    {
+        match (a.unpack(), b.unpack()) {
+            (UnpackedKind::Lifetime(a_lt), UnpackedKind::Lifetime(b_lt)) => {
+                Ok(relation.relate(&a_lt, &b_lt)?.into())
+            }
+            (UnpackedKind::Type(a_ty), UnpackedKind::Type(b_ty)) => {
+                Ok(relation.relate(&a_ty, &b_ty)?.into())
+            }
+            (UnpackedKind::Lifetime(_), _) | (UnpackedKind::Type(_), _) => bug!()
+        }
     }
 }
 

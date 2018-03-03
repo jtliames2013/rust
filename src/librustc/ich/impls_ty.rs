@@ -19,6 +19,7 @@ use std::cell::RefCell;
 use std::hash as std_hash;
 use std::mem;
 use middle::region;
+use infer::{self, canonical};
 use traits;
 use ty;
 
@@ -84,6 +85,9 @@ for ty::RegionKind {
             ty::ReEmpty => {
                 // No variant fields to hash for these ...
             }
+            ty::ReCanonical(c) => {
+                c.hash_stable(hcx, hasher);
+            }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
                 db.depth.hash_stable(hcx, hasher);
                 i.hash_stable(hcx, hasher);
@@ -120,6 +124,16 @@ for ty::RegionKind {
 }
 
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::RegionVid {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        use rustc_data_structures::indexed_vec::Idx;
+        self.index().hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::CanonicalVar {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
@@ -815,12 +829,6 @@ impl_stable_hash_for!(struct ty::Destructor {
     did
 });
 
-impl_stable_hash_for!(struct ty::DtorckConstraint<'tcx> {
-    outlives,
-    dtorck_types
-});
-
-
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::CrateVariancesMap {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
@@ -1049,3 +1057,58 @@ for ty::UniverseIndex {
         self.depth().hash_stable(hcx, hasher);
     }
 }
+
+impl<'gcx, V> HashStable<StableHashingContext<'gcx>>
+for canonical::Canonical<'gcx, V> where V: HashStable<StableHashingContext<'gcx>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let canonical::Canonical {
+            variables,
+            value,
+        } = self;
+        variables.hash_stable(hcx, hasher);
+        value.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>>
+for canonical::CanonicalVarValues<'gcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let canonical::CanonicalVarValues {
+            var_values,
+        } = self;
+        var_values.hash_stable(hcx, hasher);
+    }
+}
+
+impl_stable_hash_for!(struct infer::canonical::CanonicalVarInfo {
+    kind
+});
+
+impl_stable_hash_for!(enum infer::canonical::CanonicalVarKind {
+    Ty(k),
+    Region
+});
+
+impl_stable_hash_for!(enum infer::canonical::CanonicalTyVarKind {
+    General,
+    Int,
+    Float
+});
+
+impl_stable_hash_for!(
+    impl<'tcx, R> for struct infer::canonical::QueryResult<'tcx, R> {
+        var_values, region_constraints, certainty, value
+    }
+);
+
+impl_stable_hash_for!(struct infer::canonical::QueryRegionConstraints<'tcx> {
+    region_outlives, ty_outlives
+});
+
+impl_stable_hash_for!(enum infer::canonical::Certainty {
+    Proven, Ambiguous
+});
